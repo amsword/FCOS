@@ -94,6 +94,12 @@ def build_mnv2_fpn_backbone(cfg):
     model.out_channels = out_channels
     return model
 
+@registry.BACKBONES.register("efficient-det-0")
+def build_efficientdet0_backbone(cfg):
+    import qd.layers.efficient_det as efficient_det
+    efficient_det.g_simple_padding = True
+    model = efficient_det.EffNetFPN(compound_coef=0)
+    return model
 
 def build_backbone(cfg):
     assert cfg.MODEL.BACKBONE.CONV_BODY in registry.BACKBONES, \
@@ -101,3 +107,4 @@ def build_backbone(cfg):
             cfg.MODEL.BACKBONE.CONV_BODY
         )
     return registry.BACKBONES[cfg.MODEL.BACKBONE.CONV_BODY](cfg)
+

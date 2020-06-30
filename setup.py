@@ -54,7 +54,7 @@ def get_extensions():
         extension(
             "fcos_core._C",
             sources,
-            include_dirs=include_dirs,
+            include_dirs=[os.path.abspath(d) for d in include_dirs],
             define_macros=define_macros,
             extra_compile_args=extra_compile_args
         )

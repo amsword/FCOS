@@ -6,12 +6,10 @@ INPUT:
     PIXEL_STD: [0.229, 0.224, 0.225]
 MODEL:
   META_ARCHITECTURE: "GeneralizedRCNN"
-  WEIGHT: "https://download.pytorch.org/models/resnet50-19c8e357.pth"
+  WEIGHT: ""
   BACKBONE:
     CONV_BODY: "efficient-det-0"
     EFFICIENT_DET_START_FROM: 2
-  RESNETS:
-    BACKBONE_OUT_CHANNELS: 128
   RPN:
     RPN_HEAD: "SimpleRPNHead"
     USE_FPN: True
@@ -34,7 +32,7 @@ DATASETS:
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
-  BASE_LR: 0.02
-  WEIGHT_DECAY: 0.0001
+  BASE_LR: 0.1 # for batch size as 16
+  WEIGHT_DECAY: 0.00001 # in efficient net, teh weight decay should be lower
   STEPS: (60000, 80000)
   MAX_ITER: 90000

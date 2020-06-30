@@ -112,7 +112,16 @@ class DatasetCatalog(object):
 
     @staticmethod
     def get(name):
-        if "coco" in name:
+        if name.startswith('$'):
+            # the name is '$s', where s is the yaml str for the param
+            from qd.qd_common import load_from_yaml_str
+            args = load_from_yaml_str(name[1:])
+            import logging
+            from pprint import pformat
+            logging.info('MaskTSVDataset args\n{}'.format(pformat(args)))
+            return {'factory': 'MaskTSVDataset',
+                    'args': args}
+        elif "coco" in name:
             data_dir = DatasetCatalog.DATA_DIR
             attrs = DatasetCatalog.DATASETS[name]
             args = dict(

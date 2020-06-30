@@ -98,7 +98,10 @@ def build_mnv2_fpn_backbone(cfg):
 def build_efficientdet0_backbone(cfg):
     import qd.layers.efficient_det as efficient_det
     efficient_det.g_simple_padding = True
-    model = efficient_det.EffNetFPN(compound_coef=0)
+    start_from = cfg.MODEL.BACKBONE.EFFICIENT_DET_START_FROM
+    model = efficient_det.EffNetFPN(
+        compound_coef=0,
+        start_from=start_from)
     return model
 
 def build_backbone(cfg):

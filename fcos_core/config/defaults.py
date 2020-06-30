@@ -93,6 +93,7 @@ _C.MODEL.BACKBONE = CN()
 # (e.g., 'FPN.add_fpn_ResNet101_conv5_body' to specify a ResNet-101-FPN
 # backbone)
 _C.MODEL.BACKBONE.CONV_BODY = "R-50-C4"
+_C.MODEL.BACKBONE.EFFICIENT_DET_START_FROM = 3
 
 # Add StopGrad at a specified stage so the bottom layers are frozen
 _C.MODEL.BACKBONE.FREEZE_CONV_BODY_AT = 2

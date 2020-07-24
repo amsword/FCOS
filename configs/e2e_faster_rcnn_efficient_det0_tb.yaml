@@ -35,7 +35,7 @@ DATASETS:
 DATALOADER:
   SIZE_DIVISIBILITY: 32
 SOLVER:
-  BASE_LR: 0.1 # for batch size as 16
+  BASE_LR: 0.075 # for batch size as 16
   WEIGHT_DECAY: 0.00001 # in efficient net, teh weight decay should be lower
   STEPS: (60000, 80000)
   MAX_ITER: 90000

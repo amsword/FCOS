@@ -20,7 +20,8 @@ INF = 100000000
 
 
 def get_num_gpus():
-    return int(os.environ["WORLD_SIZE"]) if "WORLD_SIZE" in os.environ else 1
+    from qd.qd_common import get_mpi_size
+    return get_mpi_size()
 
 
 def reduce_sum(tensor):
@@ -219,7 +220,7 @@ class FCOSLossComputation(object):
             reg_loss (Tensor)
             centerness_loss (Tensor)
         """
-        N = box_cls[0].size(0)
+
         num_classes = box_cls[0].size(1)
         labels, reg_targets = self.prepare_targets(locations, targets)
 

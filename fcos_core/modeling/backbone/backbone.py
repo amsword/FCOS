@@ -104,6 +104,17 @@ def build_efficientdet0_backbone(cfg):
         start_from=start_from)
     return model
 
+@registry.BACKBONES.register("efficient-det")
+def build_efficientdet0_backbone(cfg):
+    import qd.layers.efficient_det as efficient_det
+    efficient_det.g_simple_padding = True
+    compound = cfg.MODEL.BACKBONE.EFFICIENT_DET_COMPOUND
+    start_from = cfg.MODEL.BACKBONE.EFFICIENT_DET_START_FROM
+    model = efficient_det.EffNetFPN(
+        compound_coef=compound,
+        start_from=start_from)
+    return model
+
 def build_backbone(cfg):
     assert cfg.MODEL.BACKBONE.CONV_BODY in registry.BACKBONES, \
         "cfg.MODEL.BACKBONE.CONV_BODY: {} are not registered in registry".format(

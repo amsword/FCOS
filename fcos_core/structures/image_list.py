@@ -68,5 +68,8 @@ def to_image_list(tensors, size_divisible=0):
         image_sizes = [im.shape[-2:] for im in tensors]
 
         return ImageList(batched_imgs, image_sizes)
+    elif hasattr(tensors, 'tensors') and hasattr(tensors, 'image_sizes'):
+        # maskrcnn's version of ImageList
+        return ImageList(tensors.tensors, tensors.image_sizes)
     else:
         raise TypeError("Unsupported type for to_image_list: {}".format(type(tensors)))

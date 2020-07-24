@@ -20,7 +20,8 @@ def make_optimizer(cfg, model):
                 key, cfg.SOLVER.DCONV_OFFSETS_LR_FACTOR
             ))
             lr *= cfg.SOLVER.DCONV_OFFSETS_LR_FACTOR
-        params += [{"params": [value], "lr": lr, "weight_decay": weight_decay}]
+        params += [{"params": [value], "lr": lr, "weight_decay": weight_decay,
+                    'param_names': [key]}]
 
     optimizer = torch.optim.SGD(params, lr, momentum=cfg.SOLVER.MOMENTUM)
     return optimizer

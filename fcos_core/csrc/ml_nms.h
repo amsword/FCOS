@@ -23,5 +23,7 @@ at::Tensor ml_nms(const at::Tensor& dets,
     AT_ERROR("Not compiled with GPU support");
 #endif
   }
-  AT_ERROR("CPU version not implemented");
+  if (dets.numel() == 0)
+    return at::empty({0}, dets.options().dtype(at::kLong).device(at::kCPU));
+  return ml_nms_cpu(dets, scores, labels, threshold);
 }

@@ -58,6 +58,16 @@ _C.INPUT.PIXEL_STD = [1., 1., 1.]
 # Convert image to BGR format (for Caffe2 models), in range 0-255
 _C.INPUT.TO_BGR255 = True
 
+_C.INPUT.TRAIN_RESIZER = '' # a yaml formated string
+_C.INPUT.USE_FIXED_SIZE_AUGMENTATION = False
+_C.INPUT.MIN_SIZE_ON_ITER = False
+
+_C.INPUT.BRIGHTNESS = 0.0
+_C.INPUT.CONTRAST = 0.0
+_C.INPUT.SATURATION = 0.0
+_C.INPUT.HUE = 0.0
+_C.INPUT.COLORJITTER_ADAPTIVE = ''
+
 
 # -----------------------------------------------------------------------------
 # Dataset
@@ -94,6 +104,7 @@ _C.MODEL.BACKBONE = CN()
 # backbone)
 _C.MODEL.BACKBONE.CONV_BODY = "R-50-C4"
 _C.MODEL.BACKBONE.EFFICIENT_DET_START_FROM = 3
+_C.MODEL.BACKBONE.EFFICIENT_DET_COMPOUND = 0
 
 # Add StopGrad at a specified stage so the bottom layers are frozen
 _C.MODEL.BACKBONE.FREEZE_CONV_BODY_AT = 2

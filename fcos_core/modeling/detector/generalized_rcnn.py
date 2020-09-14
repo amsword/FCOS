@@ -49,7 +49,16 @@ class GeneralizedRCNN(nn.Module):
         features = self.backbone(images.tensors)
         proposals, proposal_losses = self.rpn(images, features, targets)
         if self.roi_heads:
-            x, result, detector_losses = self.roi_heads(features, proposals, targets)
+            if len(proposals) == 0:
+                import logging
+                logging.info('# proposal is 0')
+                x = None
+                from maskrcnn_benchmark.structures.bounding_box import BoxList
+                result = [BoxList.create_empty_list(s) for s in
+                          images.image_sizes]
+                detector_losses = {}
+            else:
+                x, result, detector_losses = self.roi_heads(features, proposals, targets)
         else:
             # RPN-only models don't have roi_heads
             x = features

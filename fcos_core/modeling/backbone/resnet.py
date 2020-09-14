@@ -22,10 +22,9 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from fcos_core.layers import FrozenBatchNorm2d
 from fcos_core.layers import Conv2d
 from fcos_core.layers import DFConv2d
-from fcos_core.modeling.make_layers import group_norm
+from fcos_core.modeling.make_layers import group_norm, frozen_batch_norm
 from fcos_core.utils.registry import Registry
 
 
@@ -386,7 +385,7 @@ class BottleneckWithFixedBatchNorm(Bottleneck):
             stride_in_1x1=stride_in_1x1,
             stride=stride,
             dilation=dilation,
-            norm_func=FrozenBatchNorm2d,
+            norm_func=frozen_batch_norm,
             dcn_config=dcn_config
         )
 
@@ -394,7 +393,7 @@ class BottleneckWithFixedBatchNorm(Bottleneck):
 class StemWithFixedBatchNorm(BaseStem):
     def __init__(self, cfg):
         super(StemWithFixedBatchNorm, self).__init__(
-            cfg, norm_func=FrozenBatchNorm2d
+            cfg, norm_func=frozen_batch_norm
         )
 
 

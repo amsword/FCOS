@@ -22,6 +22,7 @@ _C = CN()
 
 _C.MODEL = CN()
 _C.MODEL.RPN_ONLY = False
+_C.MODEL.ATTRIBUTE_ON = False
 _C.MODEL.MASK_ON = False
 _C.MODEL.FCOS_ON = True
 _C.MODEL.RETINANET_ON = False
@@ -61,6 +62,7 @@ _C.INPUT.TO_BGR255 = True
 _C.INPUT.TRAIN_RESIZER = '' # a yaml formated string
 _C.INPUT.USE_FIXED_SIZE_AUGMENTATION = False
 _C.INPUT.MIN_SIZE_ON_ITER = False
+_C.INPUT.TREAT_MIN_AS_MAX = False
 
 _C.INPUT.BRIGHTNESS = 0.0
 _C.INPUT.CONTRAST = 0.0
@@ -105,6 +107,7 @@ _C.MODEL.BACKBONE = CN()
 _C.MODEL.BACKBONE.CONV_BODY = "R-50-C4"
 _C.MODEL.BACKBONE.EFFICIENT_DET_START_FROM = 3
 _C.MODEL.BACKBONE.EFFICIENT_DET_COMPOUND = 0
+_C.MODEL.BACKBONE.EFFICIENT_DET_BIFPN_VERSION = 0
 
 # Add StopGrad at a specified stage so the bottom layers are frozen
 _C.MODEL.BACKBONE.FREEZE_CONV_BODY_AT = 2
@@ -136,6 +139,7 @@ _C.MODEL.GROUP_NORM.EPSILON = 1e-5
 # RPN options
 # ---------------------------------------------------------------------------- #
 _C.MODEL.RPN = CN()
+_C.MODEL.RPN.ANCHOR_LEARNABLE = False
 _C.MODEL.RPN.USE_FPN = False
 # Base RPN anchor sizes given in absolute pixels w.r.t. the scaled network input
 _C.MODEL.RPN.ANCHOR_SIZES = (32, 64, 128, 256, 512)
@@ -174,9 +178,16 @@ _C.MODEL.RPN.MIN_SIZE = 0
 # Number of top scoring RPN proposals to keep after combining proposals from
 # all FPN levels
 _C.MODEL.RPN.FPN_POST_NMS_TOP_N_TRAIN = 2000
+# if it is 0, we will use FPN_POST_NMS_TOP_N_TRAIN which is the default
+# parameters. We should use the following to specify image-level
+_C.MODEL.RPN.FPN_POST_NMS_TOP_N_EACH_IMAGE_TRAIN = 0
 _C.MODEL.RPN.FPN_POST_NMS_TOP_N_TEST = 2000
+_C.MODEL.RPN.FPN_POST_NMS_CONF_TH_TEST = -1.
 # Custom rpn head, empty to use default conv or separable conv
 _C.MODEL.RPN.RPN_HEAD = "SingleConvRPNHead"
+_C.MODEL.RPN.ASSIGNER_TYPE = 'iou_max'
+_C.MODEL.RPN.ATSS_TOPK = 27
+
 
 
 # ---------------------------------------------------------------------------- #
@@ -209,6 +220,7 @@ _C.MODEL.ROI_HEADS.SCORE_THRESH = 0.05
 # Overlap threshold used for non-maximum suppression (suppress boxes with
 # IoU >= this threshold)
 _C.MODEL.ROI_HEADS.NMS = 0.5
+_C.MODEL.ROI_HEADS.NMS_ON_MAX_CONF_AGNOSTIC = False
 # Maximum number of detections to return per image (100 is based on the limit
 # established for the COCO dataset)
 _C.MODEL.ROI_HEADS.DETECTIONS_PER_IMG = 100
@@ -220,6 +232,7 @@ _C.MODEL.ROI_BOX_HEAD.PREDICTOR = "FastRCNNPredictor"
 _C.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION = 14
 _C.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO = 0
 _C.MODEL.ROI_BOX_HEAD.POOLER_SCALES = (1.0 / 16,)
+_C.MODEL.ROI_BOX_HEAD.USE_TORCHVISION = False
 _C.MODEL.ROI_BOX_HEAD.NUM_CLASSES = 81
 # Hidden layer dimension when using an MLP for the RoI box head
 _C.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM = 1024
@@ -230,6 +243,30 @@ _C.MODEL.ROI_BOX_HEAD.DILATION = 1
 _C.MODEL.ROI_BOX_HEAD.CONV_HEAD_DIM = 256
 _C.MODEL.ROI_BOX_HEAD.NUM_STACKED_CONVS = 4
 
+_C.MODEL.ROI_BOX_HEAD.CLASSIFICATION_ACTIVATE = 'softmax' # or sigmoid, for testing, tree
+_C.MODEL.ROI_BOX_HEAD.CLASSIFICATION_LOSS = 'CE' # or BCE . for training
+_C.MODEL.ROI_BOX_HEAD.TREE_0_BKG = ''
+_C.MODEL.ROI_BOX_HEAD.BOUNDINGBOX_LOSS_TYPE = 'SL1' # SL1 or WSL1
+
+_C.MODEL.ROI_ATTRIBUTE_HEAD = CN()
+# Number of aligned labels + 1
+_C.MODEL.ROI_ATTRIBUTE_HEAD.NUM_ALIGNED_CLASSES = -1
+# path to the label mapping file
+_C.MODEL.ROI_ATTRIBUTE_HEAD.ALIGNEDLABELMAP = ""
+_C.MODEL.ROI_ATTRIBUTE_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
+_C.MODEL.ROI_ATTRIBUTE_HEAD.PREDICTOR = "AttributeRCNNPredictor"
+_C.MODEL.ROI_ATTRIBUTE_HEAD.POOLER_RESOLUTION = 14
+_C.MODEL.ROI_ATTRIBUTE_HEAD.POOLER_SAMPLING_RATIO = 0
+_C.MODEL.ROI_ATTRIBUTE_HEAD.POOLER_SCALES = (1.0 / 16,)
+_C.MODEL.ROI_ATTRIBUTE_HEAD.NUM_ATTRIBUTES = 401
+_C.MODEL.ROI_ATTRIBUTE_HEAD.MLP_HEAD_DIM = 1024
+_C.MODEL.ROI_ATTRIBUTE_HEAD.CLS_EMD_DIM = 256
+_C.MODEL.ROI_ATTRIBUTE_HEAD.ATTR_EMD_DIM = 512
+_C.MODEL.ROI_ATTRIBUTE_HEAD.MAX_NUM_ATTR_PER_IMG = 100
+_C.MODEL.ROI_ATTRIBUTE_HEAD.MAX_NUM_ATTR_PER_OBJ = 16
+_C.MODEL.ROI_ATTRIBUTE_HEAD.POSTPROCESS_ATTRIBUTES_THRESHOLD = 0.0
+_C.MODEL.ROI_ATTRIBUTE_HEAD.SHARE_BOX_FEATURE_EXTRACTOR = True
+_C.MODEL.ROI_ATTRIBUTE_HEAD.LOSS_WEIGHT = 0.5
 
 _C.MODEL.ROI_MASK_HEAD = CN()
 _C.MODEL.ROI_MASK_HEAD.FEATURE_EXTRACTOR = "ResNet50Conv5ROIFeatureExtractor"
@@ -294,6 +331,8 @@ _C.MODEL.RESNETS.STEM_OUT_CHANNELS = 64
 _C.MODEL.RESNETS.STAGE_WITH_DCN = (False, False, False, False)
 _C.MODEL.RESNETS.WITH_MODULATED_DCN = False
 _C.MODEL.RESNETS.DEFORMABLE_GROUPS = 1
+
+_C.MODEL.RESNETS.BATCHNORM_EPS = 0.
 
 # ---------------------------------------------------------------------------- #
 # FCOS Options

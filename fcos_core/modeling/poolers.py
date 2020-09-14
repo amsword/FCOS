@@ -3,7 +3,6 @@ import torch
 import torch.nn.functional as F
 from torch import nn
 
-from fcos_core.layers import ROIAlign
 
 from .utils import cat
 
@@ -52,7 +51,8 @@ class Pooler(nn.Module):
     which is available thanks to the BoxList.
     """
 
-    def __init__(self, output_size, scales, sampling_ratio):
+    def __init__(self, output_size, scales, sampling_ratio,
+                 use_torchvision=False):
         """
         Arguments:
             output_size (list[tuple[int]] or list[int]): output size for the pooled region
@@ -61,6 +61,11 @@ class Pooler(nn.Module):
         """
         super(Pooler, self).__init__()
         poolers = []
+
+        if use_torchvision:
+            from torchvision.ops import RoIAlign as ROIAlign
+        else:
+            from fcos_core.layers import ROIAlign
         for scale in scales:
             poolers.append(
                 ROIAlign(
@@ -125,9 +130,11 @@ def make_pooler(cfg, head_name):
     resolution = cfg.MODEL[head_name].POOLER_RESOLUTION
     scales = cfg.MODEL[head_name].POOLER_SCALES
     sampling_ratio = cfg.MODEL[head_name].POOLER_SAMPLING_RATIO
+    use_torchvision = cfg.MODEL[head_name].USE_TORCHVISION
     pooler = Pooler(
         output_size=(resolution, resolution),
         scales=scales,
         sampling_ratio=sampling_ratio,
+        use_torchvision=use_torchvision,
     )
     return pooler

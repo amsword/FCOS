@@ -53,9 +53,11 @@ class Matcher(object):
         if match_quality_matrix.numel() == 0:
             # empty targets or proposals not supported during training
             if match_quality_matrix.shape[0] == 0:
-                raise ValueError(
-                    "No ground-truth boxes available for one of the images "
-                    "during training")
+                matches = torch.empty(match_quality_matrix.shape[1],
+                        dtype=torch.int64,
+                        device=match_quality_matrix.device)
+                matches[:] = Matcher.BELOW_LOW_THRESHOLD
+                return matches
             else:
                 raise ValueError(
                     "No proposal boxes available for one of the images "

@@ -21,6 +21,8 @@ class ROIBoxHead(torch.nn.Module):
         self.post_processor = make_roi_box_post_processor(cfg)
         self.loss_evaluator = make_roi_box_loss_evaluator(cfg)
 
+        self.return_distill_info = False
+
     def forward(self, features, proposals, targets=None):
         """
         Arguments:
@@ -50,16 +52,31 @@ class ROIBoxHead(torch.nn.Module):
 
         if not self.training:
             result = self.post_processor((class_logits, box_regression), proposals)
-            return x, result, {}
+            meta = {}
+            if self.return_distill_info:
+                meta['class_logits'] = class_logits
+            return x, result, meta
 
         loss_classifier, loss_box_reg = self.loss_evaluator(
             [class_logits], [box_regression]
         )
-        return (
-            x,
-            proposals,
-            dict(loss_classifier=loss_classifier, loss_box_reg=loss_box_reg),
-        )
+        if not self.return_distill_info:
+            return (
+                x,
+                proposals,
+                dict(loss_classifier=loss_classifier, loss_box_reg=loss_box_reg),
+            )
+        else:
+            return x, proposals, {
+                'loss': {
+                    'loss_classifier': loss_classifier,
+                    'loss_box_reg': loss_box_reg,
+                },
+                'distill_info': {
+                    'class_logits': class_logits,
+                    'proposals': proposals,
+                },
+            }
 
 
 def build_roi_box_head(cfg, in_channels):

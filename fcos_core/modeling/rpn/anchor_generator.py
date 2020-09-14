@@ -131,15 +131,24 @@ def make_anchor_generator(config):
     anchor_stride = config.MODEL.RPN.ANCHOR_STRIDE
     straddle_thresh = config.MODEL.RPN.STRADDLE_THRESH
 
+    learnable = config.MODEL.RPN.ANCHOR_LEARNABLE
+
     if config.MODEL.RPN.USE_FPN:
         assert len(anchor_stride) == len(
             anchor_sizes
         ), "FPN should have len(ANCHOR_STRIDE) == len(ANCHOR_SIZES)"
     else:
         assert len(anchor_stride) == 1, "Non-FPN should have a single ANCHOR_STRIDE"
-    anchor_generator = AnchorGenerator(
-        anchor_sizes, aspect_ratios, anchor_stride, straddle_thresh
-    )
+
+    if learnable:
+        from .learnable_anchor_generator import LearnableAnchorGenerator
+        anchor_generator = LearnableAnchorGenerator(
+            anchor_sizes, aspect_ratios, anchor_stride, straddle_thresh
+        )
+    else:
+        anchor_generator = AnchorGenerator(
+            anchor_sizes, aspect_ratios, anchor_stride, straddle_thresh
+        )
     return anchor_generator
 
 

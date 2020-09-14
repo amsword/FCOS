@@ -18,10 +18,12 @@ class ResNet50Conv5ROIFeatureExtractor(nn.Module):
         resolution = config.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
         scales = config.MODEL.ROI_BOX_HEAD.POOLER_SCALES
         sampling_ratio = config.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        use_torchvision = config.MODEL.ROI_BOX_HEAD.USE_TORCHVISION
         pooler = Pooler(
             output_size=(resolution, resolution),
             scales=scales,
             sampling_ratio=sampling_ratio,
+            use_torchvision=use_torchvision,
         )
 
         stage = resnet.StageSpec(index=4, block_count=3, return_features=False)
@@ -58,10 +60,12 @@ class FPN2MLPFeatureExtractor(nn.Module):
         resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
         scales = cfg.MODEL.ROI_BOX_HEAD.POOLER_SCALES
         sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        use_torchvision = cfg.MODEL.ROI_BOX_HEAD.USE_TORCHVISION
         pooler = Pooler(
             output_size=(resolution, resolution),
             scales=scales,
             sampling_ratio=sampling_ratio,
+            use_torchvision=use_torchvision,
         )
         input_size = in_channels * resolution ** 2
         representation_size = cfg.MODEL.ROI_BOX_HEAD.MLP_HEAD_DIM
@@ -93,10 +97,12 @@ class FPNXconv1fcFeatureExtractor(nn.Module):
         resolution = cfg.MODEL.ROI_BOX_HEAD.POOLER_RESOLUTION
         scales = cfg.MODEL.ROI_BOX_HEAD.POOLER_SCALES
         sampling_ratio = cfg.MODEL.ROI_BOX_HEAD.POOLER_SAMPLING_RATIO
+        use_torchvision = cfg.MODEL.ROI_BOX_HEAD.USE_TORCHVISION
         pooler = Pooler(
             output_size=(resolution, resolution),
             scales=scales,
             sampling_ratio=sampling_ratio,
+            use_torchvision=use_torchvision,
         )
         self.pooler = pooler
 

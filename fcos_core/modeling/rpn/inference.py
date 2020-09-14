@@ -24,6 +24,8 @@ class RPNPostProcessor(torch.nn.Module):
         min_size,
         box_coder=None,
         fpn_post_nms_top_n=None,
+        fpn_post_nms_conf_th=-1,
+        fpn_post_nms_top_n_each_image_train=0,
     ):
         """
         Arguments:
@@ -47,6 +49,8 @@ class RPNPostProcessor(torch.nn.Module):
         if fpn_post_nms_top_n is None:
             fpn_post_nms_top_n = post_nms_top_n
         self.fpn_post_nms_top_n = fpn_post_nms_top_n
+        self.fpn_post_nms_conf_th = fpn_post_nms_conf_th
+        self.fpn_post_nms_top_n_each_image_train = fpn_post_nms_top_n_each_image_train
 
     def add_gt_proposals(self, proposals, targets):
         """
@@ -157,11 +161,14 @@ class RPNPostProcessor(torch.nn.Module):
         # TODO resolve this difference and make it consistent. It should be per image,
         # and not per batch
         if self.training:
+            fpn_post_nms_top_n = self.fpn_post_nms_top_n
+            if self.fpn_post_nms_top_n_each_image_train:
+                fpn_post_nms_top_n = num_images * self.fpn_post_nms_top_n_each_image_train
             objectness = torch.cat(
                 [boxlist.get_field("objectness") for boxlist in boxlists], dim=0
             )
             box_sizes = [len(boxlist) for boxlist in boxlists]
-            post_nms_top_n = min(self.fpn_post_nms_top_n, len(objectness))
+            post_nms_top_n = min(fpn_post_nms_top_n, len(objectness))
             _, inds_sorted = torch.topk(objectness, post_nms_top_n, dim=0, sorted=True)
             inds_mask = torch.zeros_like(objectness, dtype=torch.bool)
             inds_mask[inds_sorted] = 1
@@ -171,18 +178,32 @@ class RPNPostProcessor(torch.nn.Module):
         else:
             for i in range(num_images):
                 objectness = boxlists[i].get_field("objectness")
-                post_nms_top_n = min(self.fpn_post_nms_top_n, len(objectness))
-                _, inds_sorted = torch.topk(
-                    objectness, post_nms_top_n, dim=0, sorted=True
-                )
+                if self.fpn_post_nms_conf_th < 0:
+                    # this is the default setting
+                    post_nms_top_n = min(self.fpn_post_nms_top_n, len(objectness))
+                    top_objs, inds_sorted = torch.topk(
+                        objectness, post_nms_top_n, dim=0, sorted=True
+                    )
+                else:
+                    inds_sorted = (objectness >= self.fpn_post_nms_conf_th).nonzero(as_tuple=False).squeeze(dim=1)
+                    if inds_sorted.numel() == 0:
+                        inds_sorted = objectness.argmax().unsqueeze(dim=0)
+                    elif inds_sorted.numel() > self.fpn_post_nms_top_n:
+                        _, ii = torch.topk(objectness[inds_sorted],
+                                           self.fpn_post_nms_top_n, dim=0)
+                        inds_sorted = inds_sorted[ii]
+
                 boxlists[i] = boxlists[i][inds_sorted]
         return boxlists
 
 
 def make_rpn_postprocessor(config, rpn_box_coder, is_train):
     fpn_post_nms_top_n = config.MODEL.RPN.FPN_POST_NMS_TOP_N_TRAIN
+    fpn_post_nms_top_n_each_image_train = config.MODEL.RPN.FPN_POST_NMS_TOP_N_EACH_IMAGE_TRAIN
+    fpn_post_nms_conf_th = -1
     if not is_train:
         fpn_post_nms_top_n = config.MODEL.RPN.FPN_POST_NMS_TOP_N_TEST
+        fpn_post_nms_conf_th = config.MODEL.RPN.FPN_POST_NMS_CONF_TH_TEST
 
     pre_nms_top_n = config.MODEL.RPN.PRE_NMS_TOP_N_TRAIN
     post_nms_top_n = config.MODEL.RPN.POST_NMS_TOP_N_TRAIN
@@ -198,5 +219,7 @@ def make_rpn_postprocessor(config, rpn_box_coder, is_train):
         min_size=min_size,
         box_coder=rpn_box_coder,
         fpn_post_nms_top_n=fpn_post_nms_top_n,
+        fpn_post_nms_conf_th=fpn_post_nms_conf_th,
+        fpn_post_nms_top_n_each_image_train=fpn_post_nms_top_n_each_image_train,
     )
     return box_selector

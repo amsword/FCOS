@@ -24,7 +24,10 @@ class RPNLossComputation(object):
     """
 
     def __init__(self, proposal_matcher, fg_bg_sampler, box_coder,
-                 generate_labels_func):
+                 generate_labels_func,
+                 assigner_type='iou_max',
+                 atss_topk=27,
+                 ):
         """
         Arguments:
             proposal_matcher (Matcher)
@@ -38,6 +41,9 @@ class RPNLossComputation(object):
         self.copied_fields = []
         self.generate_labels_func = generate_labels_func
         self.discard_cases = ['not_visibility', 'between_thresholds']
+        self.assigner_type = assigner_type
+        self.atss_topk = atss_topk
+        assert self.assigner_type in ['iou_max', 'atss']
 
     def match_targets_to_anchors(self, anchor, target, copied_fields=[]):
         match_quality_matrix = boxlist_iou(target, anchor)
@@ -49,17 +55,65 @@ class RPNLossComputation(object):
         # NB: need to clamp the indices because we can have a single
         # GT in the image, and matched_idxs can be -2, which goes
         # out of bounds
+        if len(target) == 0:
+            dummy_bbox = torch.zeros((len(matched_idxs), 4),
+                    dtype=torch.float32, device=matched_idxs.device)
+            from maskrcnn_benchmark.structures.bounding_box import BoxList
+            matched_targets = BoxList(dummy_bbox, target.size, target.mode)
+            from future.utils import viewitems
+            for k, v in viewitems(target.extra_fields):
+                if len(v) == 0:
+                    if k == 'labels':
+                        matched_targets.add_field(k,
+                                torch.zeros(len(matched_idxs),
+                                    dtype=v.dtype,
+                                    device=v.device),
+                                )
+                    else:
+                        # the following seems incorrect.
+                        matched_targets.add_field(k, v)
+                else:
+                    raise Exception('we have no idea of how to deal with '
+                            'non-empty fields')
+        else:
+            matched_targets = target[matched_idxs.clamp(min=0)]
+        matched_targets.add_field("matched_idxs", matched_idxs)
+        return matched_targets
+
+    def match_targets_to_anchors_by_atss(
+            self, anchor, target, copied_fields=[], num_anchor_per_level=None):
+        from mmrep.core import build_assigner
+        assigner = build_assigner({
+            'type': 'ATSSAssigner',
+            'topk': self.atss_topk,
+        })
+        num_level_proposals_inside = num_anchor_per_level
+        anchor = anchor.convert('xyxy')
+        target = target.convert('xyxy')
+        assign_result = assigner.assign(
+            anchor.bbox, # N x 4
+            num_level_proposals_inside,
+            target.bbox, None, None)
+        matched_idxs = assign_result.gt_inds - 1
+
         matched_targets = target[matched_idxs.clamp(min=0)]
         matched_targets.add_field("matched_idxs", matched_idxs)
         return matched_targets
 
-    def prepare_targets(self, anchors, targets):
+    def prepare_targets(self, anchors, targets, all_num_anchor_per_level):
         labels = []
         regression_targets = []
-        for anchors_per_image, targets_per_image in zip(anchors, targets):
-            matched_targets = self.match_targets_to_anchors(
-                anchors_per_image, targets_per_image, self.copied_fields
-            )
+        for anchors_per_image, targets_per_image, num_anchor_per_level in zip(
+                anchors, targets, all_num_anchor_per_level):
+            if self.assigner_type == 'iou_max':
+                matched_targets = self.match_targets_to_anchors(
+                    anchors_per_image, targets_per_image, self.copied_fields
+                )
+            else:
+                matched_targets = self.match_targets_to_anchors_by_atss(
+                    anchors_per_image, targets_per_image, self.copied_fields,
+                    num_anchor_per_level
+                )
 
             matched_idxs = matched_targets.get_field("matched_idxs")
             labels_per_image = self.generate_labels_func(matched_targets)
@@ -101,8 +155,11 @@ class RPNLossComputation(object):
             objectness_loss (Tensor)
             box_loss (Tensor
         """
-        anchors = [cat_boxlist(anchors_per_image) for anchors_per_image in anchors]
-        labels, regression_targets = self.prepare_targets(anchors, targets)
+        anchor_boxes = [cat_boxlist(anchors_per_image) for anchors_per_image in anchors]
+        all_num_anchor_per_level = [[len(a) for a in anchors_per_image] for anchors_per_image in anchors]
+        labels, regression_targets = self.prepare_targets(
+            anchor_boxes, targets, all_num_anchor_per_level)
+
         sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
         sampled_pos_inds = torch.nonzero(torch.cat(sampled_pos_inds, dim=0),
                                          as_tuple=False).squeeze(1)
@@ -150,10 +207,15 @@ def make_rpn_loss_evaluator(cfg, box_coder):
         cfg.MODEL.RPN.BATCH_SIZE_PER_IMAGE, cfg.MODEL.RPN.POSITIVE_FRACTION
     )
 
+    assigner_type = cfg.MODEL.RPN.ASSIGNER_TYPE
+    atss_topk = cfg.MODEL.RPN.ATSS_TOPK
+
     loss_evaluator = RPNLossComputation(
         matcher,
         fg_bg_sampler,
         box_coder,
-        generate_rpn_labels
+        generate_rpn_labels,
+        assigner_type=assigner_type,
+        atss_topk=atss_topk,
     )
     return loss_evaluator

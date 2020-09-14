@@ -138,6 +138,7 @@ class RPNModule(torch.nn.Module):
         self.box_selector_train = box_selector_train
         self.box_selector_test = box_selector_test
         self.loss_evaluator = loss_evaluator
+        self.return_objectness = False
 
     def forward(self, images, features, targets=None):
         """
@@ -158,7 +159,11 @@ class RPNModule(torch.nn.Module):
         anchors = self.anchor_generator(images, features)
 
         if self.training:
-            return self._forward_train(anchors, objectness, rpn_box_regression, targets)
+            result = self._forward_train(anchors, objectness, rpn_box_regression, targets)
+            if not self.return_objectness:
+                return result
+            return {'objectness': objectness,
+                    'others': result}
         else:
             return self._forward_test(anchors, objectness, rpn_box_regression)
 

@@ -105,14 +105,16 @@ def build_efficientdet0_backbone(cfg):
     return model
 
 @registry.BACKBONES.register("efficient-det")
-def build_efficientdet0_backbone(cfg):
+def build_efficientdet_backbone(cfg):
     import qd.layers.efficient_det as efficient_det
     efficient_det.g_simple_padding = True
     compound = cfg.MODEL.BACKBONE.EFFICIENT_DET_COMPOUND
     start_from = cfg.MODEL.BACKBONE.EFFICIENT_DET_START_FROM
     model = efficient_det.EffNetFPN(
         compound_coef=compound,
-        start_from=start_from)
+        start_from=start_from,
+        bifpn_version=cfg.MODEL.BACKBONE.EFFICIENT_DET_BIFPN_VERSION,
+    )
     return model
 
 def build_backbone(cfg):

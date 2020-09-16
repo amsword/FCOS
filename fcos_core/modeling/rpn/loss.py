@@ -18,6 +18,26 @@ from fcos_core.structures.boxlist_ops import boxlist_iou
 from fcos_core.structures.boxlist_ops import cat_boxlist
 
 
+def get_kind_to_num_info(labels, all_anchor_sizes_each_pyramid):
+    each_py_kind_to_num = None
+    for l, anchor_sizes_each_py in zip(labels, all_anchor_sizes_each_pyramid):
+        indicators = [['ignore', l == -1],
+                      ['background', l == 0],
+                      ['positive', l > 0]]
+        for indicator in indicators:
+            indicator.append(indicator[1].sum())
+
+        if each_py_kind_to_num is None:
+            from collections import defaultdict
+            each_py_kind_to_num = [defaultdict(int) for _ in anchor_sizes_each_py]
+        start = 0
+        for idx_py, anchor_size in enumerate(anchor_sizes_each_py):
+            for note, indicator, total in indicators:
+                curr_indicator = indicator[start: (start + anchor_size)].sum()
+                each_py_kind_to_num[idx_py][note] += 1. * curr_indicator
+            start += anchor_size
+    return each_py_kind_to_num
+
 class RPNLossComputation(object):
     """
     This class computes the RPN loss.
@@ -44,6 +64,8 @@ class RPNLossComputation(object):
         self.assigner_type = assigner_type
         self.atss_topk = atss_topk
         assert self.assigner_type in ['iou_max', 'atss']
+        self.num_call = 0
+        self.all_kind_to_num = None
 
     def match_targets_to_anchors(self, anchor, target, copied_fields=[]):
         match_quality_matrix = boxlist_iou(target, anchor)
@@ -155,10 +177,31 @@ class RPNLossComputation(object):
             objectness_loss (Tensor)
             box_loss (Tensor
         """
+        print_log = (self.num_call % 100) == 0
+        self.num_call += 1
+        if print_log:
+            all_anchor_sizes_each_pyramid = [[len(a) for a in anchors_per_image]
+                for anchors_per_image in anchors]
         anchor_boxes = [cat_boxlist(anchors_per_image) for anchors_per_image in anchors]
         all_num_anchor_per_level = [[len(a) for a in anchors_per_image] for anchors_per_image in anchors]
         labels, regression_targets = self.prepare_targets(
             anchor_boxes, targets, all_num_anchor_per_level)
+
+        if print_log:
+            with torch.no_grad():
+                all_kind_to_num = get_kind_to_num_info(labels, all_anchor_sizes_each_pyramid)
+                for kind_to_num in all_kind_to_num:
+                    for k in kind_to_num:
+                        kind_to_num[k] /= 1. * len(targets)
+                from qd.qd_common import print_table
+                print_table(all_kind_to_num)
+                #if self.all_kind_to_num is None:
+                    #self.all_kind_to_num = all_kind_to_num
+                #else:
+                    #for kind_to_num, self_kind_to_num in zip(all_kind_to_num, self.all_kind_to_num):
+                        #for kind, num in kind_to_num.items():
+                            #self_kind_to_num[kind] += num
+                #print_table(self.all_kind_to_num)
 
         sampled_pos_inds, sampled_neg_inds = self.fg_bg_sampler(labels)
         sampled_pos_inds = torch.nonzero(torch.cat(sampled_pos_inds, dim=0),

@@ -1,5 +1,6 @@
 # Copyright (c) Facebook, Inc. and its affiliates. All Rights Reserved.
 import torch
+from collections import defaultdict
 
 
 class BalancedPositiveNegativeSampler(object):
@@ -15,6 +16,7 @@ class BalancedPositiveNegativeSampler(object):
         """
         self.batch_size_per_image = batch_size_per_image
         self.positive_fraction = positive_fraction
+        self.iter = 0
 
     def __call__(self, matched_idxs):
         """
@@ -34,11 +36,17 @@ class BalancedPositiveNegativeSampler(object):
         """
         pos_idx = []
         neg_idx = []
+        verbose = (self.iter % 100) == 0
+        self.iter += 1
+        info = defaultdict(int)
         for matched_idxs_per_image in matched_idxs:
             positive = torch.nonzero(matched_idxs_per_image >= 1,
                                      as_tuple=False).squeeze(1)
             negative = torch.nonzero(matched_idxs_per_image == 0,
                                      as_tuple=False).squeeze(1)
+            if verbose:
+                info['num_pos'] += positive.numel()
+                info['num_neg'] += negative.numel()
 
             num_pos = int(self.batch_size_per_image * self.positive_fraction)
             # protect against not enough positive examples
@@ -46,6 +54,9 @@ class BalancedPositiveNegativeSampler(object):
             num_neg = self.batch_size_per_image - num_pos
             # protect against not enough negative examples
             num_neg = min(negative.numel(), num_neg)
+            if verbose:
+                info['num_sel_pos'] += num_pos
+                info['num_sel_neg'] += num_neg
 
             # randomly select positive and negative examples
             perm1 = torch.randperm(positive.numel(), device=positive.device)[:num_pos]
@@ -66,5 +77,10 @@ class BalancedPositiveNegativeSampler(object):
 
             pos_idx.append(pos_idx_per_image_mask)
             neg_idx.append(neg_idx_per_image_mask)
+        if verbose:
+            info = {k: v / len(matched_idxs) for k, v in info.items()}
+            import logging
+            from pprint import pformat
+            logging.info('info = \n{}'.format(pformat(info)))
 
         return pos_idx, neg_idx

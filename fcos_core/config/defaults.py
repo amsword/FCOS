@@ -63,6 +63,7 @@ _C.INPUT.TRAIN_RESIZER = '' # a yaml formated string
 _C.INPUT.USE_FIXED_SIZE_AUGMENTATION = False
 _C.INPUT.MIN_SIZE_ON_ITER = False
 _C.INPUT.TREAT_MIN_AS_MAX = False
+_C.INPUT.SMART_RESIZE_ON_MIN_IN_TEST = False
 
 _C.INPUT.BRIGHTNESS = 0.0
 _C.INPUT.CONTRAST = 0.0
@@ -188,7 +189,17 @@ _C.MODEL.RPN.RPN_HEAD = "SingleConvRPNHead"
 _C.MODEL.RPN.ASSIGNER_TYPE = 'iou_max'
 _C.MODEL.RPN.ATSS_TOPK = 27
 
-
+_C.MODEL.RPN.NMS_POLICY = CN()
+_C.MODEL.RPN.NMS_POLICY.TYPE = 'nms' # nms or softnms
+_C.MODEL.RPN.NMS_POLICY.THRESH = 0.7
+_C.MODEL.RPN.NMS_POLICY.WH0 = 1
+_C.MODEL.RPN.NMS_POLICY.ALPHA = 0.5
+_C.MODEL.RPN.NMS_POLICY.GAMMA = 0.5
+_C.MODEL.RPN.NMS_POLICY.NUM = 2
+_C.MODEL.RPN.NMS_POLICY.ALPHA2 = 0.1
+_C.MODEL.RPN.NMS_POLICY.GAMMA2 = 0.1
+_C.MODEL.RPN.NMS_POLICY.NUM2 = 1
+_C.MODEL.RPN.NMS_POLICY.COMPOSE_FINAL_RERANK = False
 
 # ---------------------------------------------------------------------------- #
 # ROI HEADS options
@@ -534,3 +545,5 @@ _C.TEST.BBOX_AUG.SCALE_H_FLIP = False
 _C.OUTPUT_DIR = "."
 
 _C.PATHS_CATALOG = os.path.join(os.path.dirname(__file__), "paths_catalog.py")
+
+_default_cfg = _C.clone()

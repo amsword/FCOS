@@ -26,6 +26,7 @@ class RPNPostProcessor(torch.nn.Module):
         fpn_post_nms_top_n=None,
         fpn_post_nms_conf_th=-1,
         fpn_post_nms_top_n_each_image_train=0,
+        nms_policy=None,
     ):
         """
         Arguments:
@@ -51,6 +52,17 @@ class RPNPostProcessor(torch.nn.Module):
         self.fpn_post_nms_top_n = fpn_post_nms_top_n
         self.fpn_post_nms_conf_th = fpn_post_nms_conf_th
         self.fpn_post_nms_top_n_each_image_train = fpn_post_nms_top_n_each_image_train
+        if nms_thresh != nms_policy.THRESH:
+            if nms_policy.TYPE == 'nms':
+                import logging
+                logging.info('num_policy.THRESH changed from {} to {}'.format(
+                    nms_policy.THRESH, nms_thresh))
+                nms_policy.THRESH = nms_thresh
+
+        from qd.layers.boxlist_nms import create_nms_func
+        self.nms_func = create_nms_func(nms_policy,
+                max_proposals=self.post_nms_top_n,
+                score_field='objectness')
 
     def add_gt_proposals(self, proposals, targets):
         """
@@ -115,12 +127,8 @@ class RPNPostProcessor(torch.nn.Module):
             boxlist.add_field("objectness", score)
             boxlist = boxlist.clip_to_image(remove_empty=False)
             boxlist = remove_small_boxes(boxlist, self.min_size)
-            boxlist = boxlist_nms(
-                boxlist,
-                self.nms_thresh,
-                max_proposals=self.post_nms_top_n,
-                score_field="objectness",
-            )
+            boxlist = self.nms_func(boxlist)
+            boxlist = boxlist.convert('xyxy')
             result.append(boxlist)
         return result
 
@@ -212,6 +220,7 @@ def make_rpn_postprocessor(config, rpn_box_coder, is_train):
         post_nms_top_n = config.MODEL.RPN.POST_NMS_TOP_N_TEST
     nms_thresh = config.MODEL.RPN.NMS_THRESH
     min_size = config.MODEL.RPN.MIN_SIZE
+    nms_policy = config.MODEL.RPN.NMS_POLICY
     box_selector = RPNPostProcessor(
         pre_nms_top_n=pre_nms_top_n,
         post_nms_top_n=post_nms_top_n,
@@ -221,5 +230,6 @@ def make_rpn_postprocessor(config, rpn_box_coder, is_train):
         fpn_post_nms_top_n=fpn_post_nms_top_n,
         fpn_post_nms_conf_th=fpn_post_nms_conf_th,
         fpn_post_nms_top_n_each_image_train=fpn_post_nms_top_n_each_image_train,
+        nms_policy=nms_policy,
     )
     return box_selector
